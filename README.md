@@ -1,6 +1,6 @@
 # cl-asdf-example
 
-Example of Common Lisp project relying on [ASDF](https://asdf.common-lisp.dev/).
+Minimal example of Common Lisp project relying on [ASDF](https://asdf.common-lisp.dev/).
 
 ## Register project in ASDF
 
