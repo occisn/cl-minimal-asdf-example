@@ -1,0 +1,48 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install SBCL
+        run: sudo apt-get update && sudo apt-get install -y sbcl
+
+      - name: Install Quicklisp
+        run: |
+          curl -o /tmp/quicklisp.lisp https://beta.quicklisp.org/quicklisp.lisp
+          sbcl --non-interactive \
+               --load /tmp/quicklisp.lisp \
+               --eval '(quicklisp-quickstart:install)'
+
+      - name: Load and run example A
+        run: |
+          sbcl --non-interactive \
+               --load ~/quicklisp/setup.lisp \
+               --eval '(load (compile-file "A-one-file-program/one-file.lisp"))' \
+               --eval '(funcall (read-from-string "my-app:main"))'
+
+      - name: Load and run example B
+        run: |
+          sbcl --non-interactive \
+               --load ~/quicklisp/setup.lisp \
+               --eval '(push (truename "B-asdf-project-without-tests/") asdf:*central-registry*)' \
+               --eval '(ql:quickload :cl-my-project1)' \
+               --eval '(funcall (read-from-string "cl-my-project1:main"))'
+
+      - name: Load, run and test example C
+        run: |
+          sbcl --non-interactive \
+               --load ~/quicklisp/setup.lisp \
+               --eval '(push (truename "C-asdf-project-with-tests/") asdf:*central-registry*)' \
+               --eval '(ql:quickload :cl-my-project2)' \
+               --eval '(funcall (read-from-string "cl-my-project2:main"))' \
+               --eval '(ql:quickload :cl-my-project2-tests)' \
+               --eval '(asdf:test-system :cl-my-project2)'

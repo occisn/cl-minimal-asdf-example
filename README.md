@@ -1,67 +1,111 @@
 # cl-minimal-examples
 
-Three minimal Common Lisp projects:  
-A. one-file program  
-B. ASDF project without test  
-C. ASDF project with tests
+Three minimal Common Lisp projects, from a single file to an ASDF system with a test suite.
 
-## About the example relying on relying on [ASDF](https://asdf.common-lisp.dev/) with tests.
+# Overview
 
-### Register project in ASDF
+Each directory is a complete, self-contained example. They implement the same
+handful of functions, so that the only thing that varies between them is the
+project structure:
 
-In Common Lisp REPL:
+| | Example | What it adds |
+|---|---|---|
+| A | `A-one-file-program/` | package, code and entry point in one file; no ASDF |
+| B | `B-asdf-project-without-tests/` | an ASDF system, `src/`, one file per concern |
+| C | `C-asdf-project-with-tests/` | a second ASDF system holding the tests |
+
+They have no dependencies, apart from [Parachute](https://shinmera.github.io/parachute/)
+for the test suite of example C, and run on any conforming implementation.
+
+The conventions they follow are those of the
+[Common Lisp style guide](https://lisp-lang.org/style-guide/): `;;;;` file
+headers, `*earmuffs*` on special variables, `+plus-signs+` on constants, `p` /
+`-p` on predicates, docstrings everywhere, `:import-from` rather than a broad
+`:use`, and system definition files that contain nothing but a system
+definition.
+
+# Usage
+
+## A. One-file program
+
+No registration and no ASDF. Compile the file, from SLIME with `C-c C-k`, or
+at the REPL:
+
+```lisp
+(load (compile-file "A-one-file-program/one-file.lisp"))
+(my-app:main)
 ```
-(push #P"c:/.../cl-my-project2/" asdf:*central-registry*)
+
+## B and C. ASDF projects
+
+### Register the project with ASDF
+
+In the REPL:
+
+```lisp
+(push #P"c:/.../cl-minimal-examples/C-asdf-project-with-tests/" asdf:*central-registry*)
 ```
 
-For a permanent registration, add the above line in `.sbclrc` file
+For a permanent registration, add that line to your `.sbclrc`.
 
-Verification: the below instructions in Common Lisp REPL shall yield no error.
-```
+Verification — these should return a system object rather than signal an error:
+
+```lisp
 (asdf:find-system :cl-my-project2)
 (asdf:find-system :cl-my-project2-tests)
 ```
 
-### Load system
+### Load the system
 
-To load system from Common Lisp REPL, use one of the following instructions:
-```
-,load-system [cl-my-project2]
+Any of:
+
+```lisp
 (asdf:load-system :cl-my-project2)
 (ql:quickload :cl-my-project2)
 ```
 
-At the beginning of the work session, it could be smarter to load tests system, which also force loading of main system:
-```
-,load-system [cl-my-project2-tests]
+or `,load-system [cl-my-project2]` from the SLIME REPL.
+
+At the start of a work session it is often easier to load the test system,
+which pulls in the main system as a dependency:
+
+```lisp
 (asdf:load-system :cl-my-project2-tests)
-(ql:quickload :cl-my-project2-tests)
-``` 
-
-### Execute function
-
-In Common Lisp REPL:
-```
-(cl-my-project2:start)
 ```
 
-Function `double` is not exported so two `:` are necessary:
-```
-(cl-my-project2::double 2)
+### Call a function
+
+```lisp
+(cl-my-project2:main)
+(cl-my-project2:triple 4)               ; => 12
 ```
 
-### Tests
+`double` is deliberately *not* exported, so reaching it takes two colons:
 
-To test system from Common Lisp REPL, use one of the following instructions:
+```lisp
+(cl-my-project2::double 2)              ; => 4
 ```
-,test-system [cl-my-project2]
+
+This is what the double colon means: the symbol exists in the package, but the
+package does not offer it as part of its interface. Example C shows the other
+way to reach such a symbol — `tests/package.lisp` names it in an
+`:import-from` clause, which works on internal symbols too.
+
+### Run the tests
+
+```lisp
 (asdf:test-system :cl-my-project2)
-(parachute:test 'cl-my-project2-tests)
+(parachute:test :cl-my-project2-tests)
 ```
 
-For a specific test:
-```
+or `,test-system [cl-my-project2]` from the SLIME REPL. For a single test:
+
+```lisp
 (parachute:test 'cl-my-project2-tests::test-triple)
 ```
 
-(end of README)
+# License
+
+Copyright (c) 2025 Nicolas Occis
+
+Licensed under the MIT License.

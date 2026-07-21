@@ -1,62 +1,75 @@
-;;; C-c C-k to compile file 
+;;;; A complete Common Lisp program in a single file.
+;;;;
+;;;; The simplest shape a program can take: one file holding the package
+;;;; definition, the code, and the entry point.  There is no ASDF system, so
+;;;; the file is loaded by compiling it directly -- C-c C-k in SLIME, or
+;;;; (load (compile-file "one-file.lisp")) at the REPL.
+;;;;
+;;;; Once loaded, call (my-app:main).
 
-(eval-when (:compile-toplevel :load-toplevel :execute)
-  (ql:quickload :cffi))
+(defpackage :my-app
+  (:use :cl)
+  (:export #:main
+           #:triple
+           #:smallp
+           #:worth-doubling-p)
+  (:documentation "A one-file demonstration program."))
 
-(defpackage my-page
-  (:use :cl) ; avoid :cffi here in order not to pollute names
-  (:export
-   nb-of-processors))
+(in-package :my-app)
 
-(in-package :my-page)
+;;; Compilation policy
+;;;
+;;; There is no .asd file here to carry the setting, so the policy is declaimed
+;;; in the file itself.  Compiled with COMPILE-FILE, a file-level DECLAIM
+;;; applies to the rest of this file only.  Projects B and C set their policy
+;;; once for all their files, in the .asd.
 
-(declaim (optimize (debug 3) 
-                   (safety 3)
-                   (speed 0)))
+(declaim (optimize (debug 3) (safety 3) (speed 0)))
 
-(cffi:defctype dword :unsigned-long)
+;;; Constants and parameters
+;;;
+;;; Constants wear +plus-signs+, special variables wear *earmuffs*.
 
-(cffi:defctype word :unsigned-short)
+(defconstant +small-threshold+ 10
+  "Integers strictly below this are considered small.")
 
-(cffi:defcstruct processor-struct
-  (processor-architecture word)
-  (reserved word))
+(defparameter *greeting* "Hello world!"
+  "Text printed by MAIN before anything else.")
 
-(cffi:defcunion oem-union
-  (oem-ide dword)
-  (processor-struct (:struct processor-struct)))
+;;; Arithmetic
 
-(cffi:defcstruct system-info
-  (oem-info (:union oem-union))
-  (page-size dword)
-  (minimum-application-address :pointer)
-  (maximum-application-address :pointer)
-  (active-processor-mask (:pointer dword))
-  (number-of-processors dword)
-  (processor-type dword)
-  (allocation-granularity dword)
-  (processor-level word)
-  (processor-revision word))
-
-(cffi:defcfun ("GetSystemInfo" get-system-info) :void
-  (data (:pointer (:struct system-info))))
-
-(defun nb-of-processors ()
-  "Get CPU Threads count."
-  (cffi:with-foreign-object (info '(:struct system-info))
-    (get-system-info info)
-    (cffi:foreign-slot-value info '(:struct system-info)
-                             'number-of-processors)))
+(declaim (ftype (function (fixnum) fixnum) double triple))
 
 (defun double (x)
-  "Return twice the value of X."
-  (declare (type fixnum x))
-  (* x 2))
+  "Return twice the value of X.  Not exported: see the README on `::'."
+  (* 2 x))
+
+(defun triple (x)
+  "Return three times the value of X."
+  (* 3 x))
+
+;;; Predicates
+;;;
+;;; A predicate ends in P when the rest of the name is a single word, and in
+;;; -P when it is several words.
+
+(defun smallp (x)
+  "Return true if X is below +SMALL-THRESHOLD+."
+  (< x +small-threshold+))
+
+(defun worth-doubling-p (x)
+  "Return true if X is small and doubling it keeps it small."
+  (and (smallp x)
+       (smallp (double x))))
+
+;;; Entry point
 
 (defun main ()
-  "Entry point displaying demo output."
-  (format t "Hello world!~%")
+  "Print a short demonstration of every function defined here."
+  (format t "~a~%" *greeting*)
   (format t "Double of 3 is ~a.~%" (double 3))
-  (format t "Number of processors is ~a.~%" (nb-of-processors)))
-
-;; end
+  (format t "Triple of 3 is ~a.~%" (triple 3))
+  (dolist (n '(3 7 20))
+    (format t "~a is ~:[not ~;~]small, and ~:[not ~;~]worth doubling.~%"
+            n (smallp n) (worth-doubling-p n)))
+  (values))
